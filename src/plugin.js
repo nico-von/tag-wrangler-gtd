@@ -20,6 +20,11 @@ export default class TagWrangler extends Plugin {
         return Array.from(this.tagPages.get(Tag.canonical(tag)) || "")[0]
     }
 
+    async openBasePage(tagName, newLeaf) {
+      const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
+      return this.app.workspace.getLeaf(newLeaf).openFile(file);  
+    }
+
     openTagPage(file, isNew, newLeaf) {
         const openState = {
             eState: isNew ? {rename: "all"} : {focus: true},  // Rename new page, focus existing
@@ -250,6 +255,7 @@ export default class TagWrangler extends Plugin {
             query = search && search.getGlobalSearchQuery(),
             random = this.app.plugins.plugins["smart-random-note"]
         ;
+        menu.addItem(item("tag-base-up", "popup-open", "Open base view of #"+tagName, (e) => this.openBasePage(tagName, Keymap.isModEvent(e)) ))
         menu.addItem(item("tag-rename", "pencil", "Rename #"+tagName, () => this.rename(tagName)))
 
         if (tagPage) {
