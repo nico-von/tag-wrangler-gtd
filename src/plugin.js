@@ -11,6 +11,13 @@ function onElement(el, event, selector, callback, options) {
     return () => el.off(event, selector, callback, options);
 }
 
+function listSubtags(app, baseTag) {
+  const tag = new Tag(baseTag);
+
+  return Object.keys(app.metadataCache.getTags())
+    .filter(t => tag.matches(t));
+}
+
 export default class TagWrangler extends Plugin {
     use = use.plugin(this);
     pageAliases = new Map();
@@ -21,6 +28,7 @@ export default class TagWrangler extends Plugin {
     }
 
     async openBasePage(tagName, newLeaf) {
+      const subtags = (listSubtags(this.app, tagName))
       const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
       return this.app.workspace.getLeaf(newLeaf).openFile(file);  
     }
