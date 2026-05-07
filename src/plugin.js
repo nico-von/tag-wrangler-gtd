@@ -18,6 +18,42 @@ function listSubtags(app, baseTag) {
     .filter(t => tag.matches(t));
 }
 
+
+async function tagPageContent(subTags, file, app) {
+
+    const subTagBaseStringsArr = subTags.map((e, i, arr) => { 
+        const tag = new Tag(e);
+        const tagName = tag.name;
+        const filterArr = [];
+        arr.slice(i).forEach((tagItem, j) => {
+            if (j === 0) {
+                filterArr.push(`        - file.hasTag("${tagItem}")`)
+            } else {
+                filterArr.push(`        - '!file.hasTag("${tagItem}")'`)
+            }
+        })
+
+        return [
+        `${"#".repeat(i + 1)} ${tagName}`,
+        "\n",
+        "```base",
+        "views:",
+        "  - type: table",
+        "    name: Table",
+        "    filters:",
+        "      and:",
+        ...filterArr,
+        "```"
+        ].join("\n"); //allow this to be manipulated in settings perhaps
+    })
+
+    const tagBaseString = subTagBaseStringsArr.join("\n".repeat(3));
+
+    if(file) {
+        await app.vault.modify(file, tagBaseString)
+    }
+}
+
 export default class TagWrangler extends Plugin {
     use = use.plugin(this);
     pageAliases = new Map();
@@ -28,8 +64,9 @@ export default class TagWrangler extends Plugin {
     }
 
     async openBasePage(tagName, newLeaf) {
-      const subtags = (listSubtags(this.app, tagName))
+      const subtags = (listSubtags(this.app, tagName));
       const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
+      await tagPageContent(subtags, file, this.app);
       return this.app.workspace.getLeaf(newLeaf).openFile(file);  
     }
 
