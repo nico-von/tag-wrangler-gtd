@@ -7,6 +7,7 @@ export class Tag {
             canonical = this.canonical = hashed.toLowerCase(),
             canonical_prefix = this.canonical_prefix = canonical + "/";
         this.name = hashed.slice(1);
+        this.level = (this.name.match(/\//g) || []).length;
         this.matches = function (text) {
             text = text.toLowerCase();
             return text == canonical || text.startsWith(canonical_prefix);

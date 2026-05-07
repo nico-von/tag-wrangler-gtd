@@ -20,10 +20,12 @@ function listSubtags(app, baseTag) {
 
 
 async function tagPageContent(subTags, file, app) {
-
+    let highestLevel = 0;
     const subTagBaseStringsArr = subTags.map((e, i, arr) => { 
         const tag = new Tag(e);
         const tagName = tag.name;
+        const tagLevel = tag.level;
+        highestLevel = i === 0 ? tagLevel : highestLevel;
         const filterArr = [];
         arr.slice(i).forEach((tagItem, j) => {
             if (j === 0) {
@@ -34,7 +36,7 @@ async function tagPageContent(subTags, file, app) {
         })
 
         return [
-        `${"#".repeat(i + 1)} ${tagName}`,
+        `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
         "\n",
         "```base",
         "views:",
