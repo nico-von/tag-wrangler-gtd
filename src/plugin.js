@@ -15,7 +15,21 @@ function listSubtags(app, baseTag) {
   const tag = new Tag(baseTag);
 
   return Object.keys(app.metadataCache.getTags())
-    .filter(t => tag.matches(t));
+    .filter(t => tag.matches(t))
+    .sort((a, b) => {
+        const aParts = a.split("/");
+        const bParts = b.split("/");
+
+        // Compare each level
+        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+            if (aParts[i] !== bParts[i]) {
+            return aParts[i].localeCompare(bParts[i]);
+            }
+        }
+
+        // Parent before child
+        return aParts.length - bParts.length;
+    });
 }
 
 
