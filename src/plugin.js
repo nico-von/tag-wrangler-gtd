@@ -1,4 +1,5 @@
 import {Component, Keymap, Menu, Notice, parseFrontMatterAliases, Plugin} from "obsidian";
+import {DEFAULT_SETTINGS, SettingTab} from "./Settings";
 import {renameTag, findTargets} from "./renaming";
 import {Tag} from "./Tag";
 import {around} from "monkey-around";
@@ -115,7 +116,9 @@ export default class TagWrangler extends Plugin {
         app.workspace.trigger("tag-page:did-create", tp_evt);
     }
 
-    onload(){
+    async onload(){
+        await this.loadSettings();
+
         this.registerEvent(
             app.workspace.on("editor-menu", (menu, editor) => {
                 const token = editor.getClickableTokenAt(editor.getCursor());
@@ -255,7 +258,18 @@ export default class TagWrangler extends Plugin {
             this.registerEvent(this.app.vault.on("delete", file => this.updatePage(file)));
             app.workspace.getLeavesOfType("tag").forEach(leaf => {leaf?.view?.requestUpdateTags?.()});
         });
+        
+        // This adds a settings tab so the user can configure various aspects of the plugin
+		this.addSettingTab(new SettingTab(this.app, this));
     }
+
+    async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
 
     updatePage(file, frontmatter) {
         const tags = parseFrontMatterAliases(frontmatter)?.filter(Tag.isTag) || [];
