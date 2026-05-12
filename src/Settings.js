@@ -2,7 +2,7 @@ import { PluginSettingTab, Setting, AbstractInputSuggest } from "obsidian";
 import { listTags } from "./plugin";
 
 const DEFAULT_OBJ = {
-    tagname: 'default',
+    tagname: '',
     viewtype: 'table',
     addProperties: 'default'
 }
