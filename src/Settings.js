@@ -8,7 +8,7 @@ const DEFAULT_OBJ = {
 }
 export const DEFAULT_SETTINGS = {
     tagBaseSettings: [
-        DEFAULT_OBJ
+        Object.assign({}, DEFAULT_OBJ)
     ]
 }
 
@@ -84,7 +84,7 @@ export class SettingTab extends PluginSettingTab {
             cb.setButtonText("Add new tag")
                 .setCta()
                 .onClick(async () => {
-                    this.plugin.settings.tagBaseSettings.push(DEFAULT_OBJ);
+                    this.plugin.settings.tagBaseSettings.push(Object.assign({}, DEFAULT_OBJ));
                     await this.plugin.saveSettings();
                     // Force refresh
                     this.display();
