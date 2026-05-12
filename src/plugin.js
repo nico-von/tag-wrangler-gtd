@@ -43,7 +43,8 @@ export function listTags(app, baseTag = null) {
 }
 
 
-async function tagPageContent(subTags, file, app) {
+async function tagPageContent(subTags, file, app, settings) {
+    const {tagBaseSettings} = settings;
     let highestLevel = 0;
     const subTagBaseStringsArr = subTags.map((e, i, arr) => { 
         const tag = new Tag(e);
@@ -92,7 +93,7 @@ export default class TagWrangler extends Plugin {
     async openBasePage(tagName, newLeaf) {
       const subtags = listTags(this.app, tagName);
       const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
-      await tagPageContent(subtags, file, this.app);
+      await tagPageContent(subtags, file, this.app, this.settings);
       return this.app.workspace.getLeaf(newLeaf).openFile(file);  
     }
 
