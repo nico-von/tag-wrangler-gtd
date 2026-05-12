@@ -1,4 +1,5 @@
 import { PluginSettingTab, Setting } from "obsidian";
+import { listTags } from "./plugin";
 
 const DEFAULT_OBJ = {
     tagname: 'default',

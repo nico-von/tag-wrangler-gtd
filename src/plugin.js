@@ -12,11 +12,12 @@ function onElement(el, event, selector, callback, options) {
     return () => el.off(event, selector, callback, options);
 }
 
-function listSubtags(app, baseTag) {
-  const tag = new Tag(baseTag);
+export function listTags(app, baseTag = null) {
+
+  const tag = baseTag ? new Tag(baseTag) : baseTag;
 
   return Object.keys(app.metadataCache.getTags())
-    .filter(t => tag.matches(t))
+    .filter(t => tag ? tag.matches(t) : true)
     .sort((a, b) => {
         const aParts = a.split("/");
         const bParts = b.split("/");
@@ -81,7 +82,7 @@ export default class TagWrangler extends Plugin {
     }
 
     async openBasePage(tagName, newLeaf) {
-      const subtags = (listSubtags(this.app, tagName));
+      const subtags = listTags(this.app, tagName);
       const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
       await tagPageContent(subtags, file, this.app);
       return this.app.workspace.getLeaf(newLeaf).openFile(file);  
