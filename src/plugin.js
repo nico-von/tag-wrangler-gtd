@@ -42,21 +42,48 @@ export function listTags(app, baseTag = null) {
     
 }
 
+function getInheritedSetting(tag, settings) {
+    const parts = tag.split("/");
+
+    for (let i = parts.length; i > 0; i--) {
+        const current = parts.slice(0, i).join("/");
+
+        const found = settings.find(s => s.tagname === current);
+
+        if (found) return found;
+    }
+
+    return null;
+}
 
 async function changeTagBaseContent(subTags, file, app, settings) {
     const {tagBaseSettings} = settings;
+    const subTagSettingsApplied = subTags.map(e => {
+        const setting = getInheritedSetting(e, tagBaseSettings);
+        const tagObject = {
+            tag: new Tag(e),
+        };
+
+        if (setting) {
+            tagObject.viewtype = setting.viewtype;
+            tagObject.addproperties = setting.addproperties;
+        }
+
+        return tagObject;
+    });
+
     let highestLevel = 0;
-    const subTagBaseStringsArr = subTags.map((e, i, arr) => { 
-        const tag = new Tag(e);
-        const tagName = tag.name;
-        const tagLevel = tag.level;
+
+    const subTagBaseStringsArr = subTagSettingsApplied.map((e, i, arr) => { 
+        const tagName = e.tag.name;
+        const tagLevel = e.tag.level;
         highestLevel = i === 0 ? tagLevel : highestLevel;
         const filterArr = [];
         arr.slice(i).forEach((tagItem, j) => {
             if (j === 0) {
-                filterArr.push(`        - file.hasTag("${tagItem}")`)
+                filterArr.push(`        - file.hasTag("${tagItem.tag.name}")`)
             } else {
-                filterArr.push(`        - '!file.hasTag("${tagItem}")'`)
+                filterArr.push(`        - '!file.hasTag("${tagItem.tag.name}")'`)
             }
         })
 
@@ -65,8 +92,8 @@ async function changeTagBaseContent(subTags, file, app, settings) {
         "\n",
         "```base",
         "views:",
-        "  - type: table",
-        "    name: Table",
+        `  - type: ${e.viewtype ? e.viewtype : 'table'}`,
+        `    name: ${e.viewtype ? e.viewtype : 'table'}`,
         "    filters:",
         "      and:",
         ...filterArr,
