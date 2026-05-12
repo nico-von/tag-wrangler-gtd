@@ -12,26 +12,34 @@ function onElement(el, event, selector, callback, options) {
     return () => el.off(event, selector, callback, options);
 }
 
-export function listTags(app, baseTag = null) {
+function tagSort(a, b) {
+    const aParts = a.split("/");
+    const bParts = b.split("/");
 
-  const tag = baseTag ? new Tag(baseTag) : baseTag;
-
-  return Object.keys(app.metadataCache.getTags())
-    .filter(t => tag ? tag.matches(t) : true)
-    .sort((a, b) => {
-        const aParts = a.split("/");
-        const bParts = b.split("/");
-
-        // Compare each level
-        for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
-            if (aParts[i] !== bParts[i]) {
-            return aParts[i].localeCompare(bParts[i]);
-            }
+    // Compare each level
+    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+    if (aParts[i] !== bParts[i]) {
+        return aParts[i].localeCompare(bParts[i]);
         }
+    }
 
-        // Parent before child
-        return aParts.length - bParts.length;
-    });
+    // Parent before child
+    return aParts.length - bParts.length;
+}
+
+export function listTags(app, baseTag = null) {
+  const tags = Object.keys(app.metadataCache.getTags());
+
+  if (baseTag) {
+    const tag = new Tag(baseTag);
+
+    return tags
+    .filter(t => tag.matches(t))
+    .sort(tagSort);
+  }
+
+  return tags.sort(tagSort);
+    
 }
 
 
