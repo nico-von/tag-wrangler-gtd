@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting } from "obsidian";
+import { PluginSettingTab, Setting, AbstractInputSuggest } from "obsidian";
 import { listTags } from "./plugin";
 
 const DEFAULT_OBJ = {
@@ -33,13 +33,14 @@ export class SettingTab extends PluginSettingTab {
             new Setting(this.containerEl)
                 .setName('Root Tag')
                 .setDesc('Root tag to apply these settings')
-                .addText(text => text
-                    .setPlaceholder('Enter the root tag')
+                .addSearch(search => {
+                    new TagSuggest(this.app, search.inputEl);
+                    search.setPlaceholder('Search for the root tag')
                     .setValue(currentTag.tagname)
                     .onChange(async (value) => {
                         currentTag.tagname = value;
                         await this.plugin.saveSettings();
-                    }));
+                    })});
 
             new Setting(this.containerEl)
                 .setName('View Type')
@@ -94,5 +95,29 @@ export class SettingTab extends PluginSettingTab {
     display() {
         this.containerEl.empty();
         this.addTagSettings();
+    }
+}
+
+class TagSuggest extends AbstractInputSuggest {
+    constructor(app, inputEl) {
+        super(app, inputEl);
+        this.app = app;
+        this.inputEl = inputEl;
+    }
+
+    getSuggestions(inputStr) {
+        const lowerCaseInputStr = inputStr.toLocaleLowerCase();
+        const tags = listTags(this.app);
+        return [...tags].filter((e) => e.toLocaleLowerCase().contains(lowerCaseInputStr))
+    }
+
+    renderSuggestion(content, el) {
+        el.setText(content);
+    }
+
+    selectSuggestion(value) {
+        this.setValue(value);
+        this.inputEl.trigger("input")   
+        this.close();
     }
 }
