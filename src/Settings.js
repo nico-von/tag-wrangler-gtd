@@ -26,9 +26,10 @@ export class SettingTab extends PluginSettingTab {
         this.plugin.settings.tagBaseSettings.forEach((tag, index) => {
             const currentTag = this.plugin.settings.tagBaseSettings[index];
 
+            const currentTagName = currentTag.tagname === '' ? '(select a root tag)' : currentTag.tagname
             new Setting(this.containerEl)
-            .setName(currentTag.tagname).setHeading()
-            .setDesc(`Settings for ${currentTag.tagname}`);
+            .setName(currentTagName).setHeading()
+            .setDesc(`Settings for ${currentTagName}`);
 
             new Setting(this.containerEl)
                 .setName('Root Tag')
