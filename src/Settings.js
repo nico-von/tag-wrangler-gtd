@@ -4,7 +4,7 @@ import { listTags } from "./plugin";
 const DEFAULT_OBJ = {
     tagname: '',
     viewtype: 'table',
-    orderproperties: [],
+    orderproperties: [], 
     groupproperties: [], //{property: '', direction: ''}
     sortproperties: [], //{property: '', direction: ''}
 }
@@ -15,6 +15,114 @@ export const DEFAULT_SETTINGS = {
     ]
 }
 
+
+function addRootTag(containerEl, currentTag, app, plugin) {
+    new Setting(containerEl)
+        .setName('Root Tag')
+        .setDesc('Root tag to apply these settings')
+        .addSearch(search => {
+            new TagSuggest(app, search.inputEl);
+            search.setPlaceholder('Search for the root tag')
+                .setValue(currentTag.tagname)
+                .onChange(async (value) => {
+                    currentTag.tagname = value;
+                    await plugin.saveSettings();
+                })
+        });
+}
+
+function addView(containerEl, currentTag, plugin) {
+    new Setting(containerEl)
+        .setName('View Type')
+        .setDesc('View Type of this tag category')
+        .addDropdown(dropdown => dropdown
+            .addOption('table', 'Table')
+            .addOption('cards', 'Cards')
+            .addOption('list', 'List')
+            .setValue(currentTag.viewtype)
+            .onChange(async (value) => {
+                currentTag.viewtype = value;
+                await plugin.saveSettings();
+            }));
+}
+
+function addProperties(containerEl, currentTag, app, plugin) {
+    new Setting(containerEl)
+        .setName("Additional Property Settings").setHeading()
+        .setDesc("Additional Properties to show")
+
+    new Setting(containerEl)
+        .addSearch(search => search
+            .setPlaceholder('Select or type a property or formula')
+            .onChange(async (value) => {
+            }));
+
+    new Setting(containerEl).addButton((cb) => {
+        cb.setButtonText("Add new property")
+            .setCta()
+            .onClick(async () => {
+                // Force refresh
+                this.display();
+            });
+    });
+
+}
+
+function addGroupSettings(containerEl, currentTag, app, plugin) {
+    new Setting(containerEl)
+        .setName("Additional Group Settings").setHeading()
+        .setDesc("Additional Group Settings to apply")
+
+    new Setting(containerEl)
+        .addSearch(search => search
+            .setPlaceholder('Select or type the property to group')
+            .onChange(async (value) => {
+            }));
+
+    new Setting(containerEl)
+        .addSearch(text => text
+            .setPlaceholder('Type direction of this group')
+            .onChange(async (value) => {
+            }));
+
+
+    new Setting(containerEl).addButton((cb) => {
+        cb.setButtonText("Add new group setting")
+            .setCta()
+            .onClick(async () => {
+                // Force refresh
+                this.display();
+            });
+    });
+}
+
+function addSortSettings(containerEl, currentTag, app, plugin) {
+    new Setting(containerEl)
+        .setName("Additional Sort Settings").setHeading()
+        .setDesc("Additional Sort Settings to apply")
+
+    new Setting(containerEl)
+        .addSearch(search => search
+            .setPlaceholder('Select or type the property to sort')
+            .onChange(async (value) => {
+
+            })
+        )
+    new Setting(containerEl)
+        .addText(text => text
+            .setPlaceholder('Type the direction of this sort')
+            .onChange(async (value) => {
+            }));
+
+    new Setting(containerEl).addButton((cb) => {
+        cb.setButtonText("Add new sort setting")
+            .setCta()
+            .onClick(async () => {
+                // Force refresh
+                this.display();
+            });
+    });
+}
 export class SettingTab extends PluginSettingTab {
     constructor(app, plugin) {
         super(app, plugin);
@@ -34,11 +142,14 @@ export class SettingTab extends PluginSettingTab {
                 .setPlaceholder('The tag base file to use')
                 .setValue(this.plugin.settings.tagBaseFile)
                 .onChange(async (value) => {
-                    
+
                 })
             )
 
         this.plugin.settings.tagBaseSettings.forEach((tag, index) => {
+            // todo
+            // 1: HOOK PROCESS CODE
+            // 2: ATTEMPT TO MAKE EACH TAG INTO ITS OWN TAB
             const currentTag = this.plugin.settings.tagBaseSettings[index];
 
             const currentTagName = currentTag.tagname === '' ? '(select a root tag)' : currentTag.tagname
@@ -46,102 +157,11 @@ export class SettingTab extends PluginSettingTab {
                 .setName(currentTagName).setHeading()
                 .setDesc(`Settings for ${currentTagName}`)
 
-            new Setting(this.containerEl)
-                .setName('Root Tag')
-                .setDesc('Root tag to apply these settings')
-                .addSearch(search => {
-                    new TagSuggest(this.app, search.inputEl);
-                    search.setPlaceholder('Search for the root tag')
-                        .setValue(currentTag.tagname)
-                        .onChange(async (value) => {
-                            currentTag.tagname = value;
-                            await this.plugin.saveSettings();
-                        })
-                });
-
-            new Setting(this.containerEl)
-                .setName('View Type')
-                .setDesc('View Type of this tag category')
-                .addDropdown(dropdown => dropdown
-                    .addOption('table', 'Table')
-                    .addOption('cards', 'Cards')
-                    .addOption('list', 'List')
-                    .setValue(currentTag.viewtype)
-                    .onChange(async (value) => {
-                        currentTag.viewtype = value;
-                        await this.plugin.saveSettings();
-                    }));
-
-            new Setting(this.containerEl)
-            .setName("Additional Property Settings").setHeading()
-            .setDesc("Additional Properties to show")
-
-            new Setting(this.containerEl)    
-                .addSearch(search => search
-                    .setPlaceholder('Select or type a property or formula')
-                    .onChange(async (value) => {
-                    }));
-
-             new Setting(this.containerEl).addButton((cb) => {
-                cb.setButtonText("Add new property")
-                    .setCta()
-                    .onClick(async () => {
-                        // Force refresh
-                        this.display();
-                    });
-            });
-            
-            new Setting(this.containerEl)
-            .setName("Additional Group Settings").setHeading()
-            .setDesc("Additional Group Settings to apply")
-
-            new Setting(this.containerEl)
-                .addSearch(search => search
-                    .setPlaceholder('Select or type the property to group')
-                    .onChange(async (value) => {
-                    }));
-            
-            new Setting(this.containerEl)
-                .addSearch(text => text
-                    .setPlaceholder('Type direction of this group')
-                    .onChange(async (value) => {
-                    }));
-            
-
-            new Setting(this.containerEl).addButton((cb) => {
-                cb.setButtonText("Add new group setting")
-                    .setCta()
-                    .onClick(async () => {
-                        // Force refresh
-                        this.display();
-                    });
-            });
-            
-            new Setting(this.containerEl)
-            .setName("Additional Sort Settings").setHeading()
-            .setDesc("Additional Sort Settings to apply")
-
-            new Setting(this.containerEl)
-                .addSearch(search => search
-                    .setPlaceholder('Select or type the property to sort')
-                    .onChange(async (value) => {
-
-                    })
-                )
-            new Setting(this.containerEl)
-                .addText(text => text
-                    .setPlaceholder('Type the direction of this sort')
-                    .onChange(async (value) => {
-                    }));
-            
-            new Setting(this.containerEl).addButton((cb) => {
-                cb.setButtonText("Add new sort setting")
-                    .setCta()
-                    .onClick(async () => {
-                        // Force refresh
-                        this.display();
-                    });
-            });
+            addRootTag(this.containerEl, currentTag, this.app, this.plugin);
+            addView(this.containerEl, currentTag, this.plugin);
+            addProperties(this.containerEl, currentTag, this.app, this.plugin);
+            addGroupSettings(this.containerEl, currentTag, this.app, this.plugin);
+            addSortSettings(this.containerEl, currentTag, this.app, this.plugin);
 
             new Setting(this.containerEl).addButton((cb) => {
                 cb.setButtonText("Delete this tag")
