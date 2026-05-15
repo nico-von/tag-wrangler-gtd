@@ -47,82 +47,31 @@ function addView(containerEl, currentTag, plugin) {
 }
 
 function addProperties(containerEl, currentTag, app, plugin) {
-    new Setting(containerEl)
-        .setName("Additional Property Settings").setHeading()
-        .setDesc("Additional Properties to show")
+    const propertiesDescription = new DocumentFragment();
+    const descriptionA = document.createElement("p");
+    const descriptionB = document.createElement("p");
+    const descriptionC = document.createElement("p");
 
+    descriptionA.textContent = `Optionally override the
+        generated query YAML. You may provide any
+        section from view to sort.`
+    descriptionB.textContent = `Missing top-level sections
+        automatically fall back to the plugin defaults or
+        UI settings. For example, if only sort is provided,
+        the default view and filter will still be used.`
+    descriptionC.textContent = `However, once a section is defined
+        , it is followed exactly as written. If view is provided
+        but filter is omitted, no filtering will be applied.`
+    propertiesDescription.append(descriptionA, descriptionB, descriptionC)
     new Setting(containerEl)
-        .addSearch(search => search
-            .setPlaceholder('Select or type a property or formula')
+        .setName("Manual Properties")
+        .setDesc(propertiesDescription)
+        .addTextArea(text => text
+            .setPlaceholder("Provide custom Base code. Use (rootTag) to reference the current root tag.")
             .onChange(async (value) => {
             }));
-
-    new Setting(containerEl).addButton((cb) => {
-        cb.setButtonText("Add new property")
-            .setCta()
-            .onClick(async () => {
-                // Force refresh
-                this.display();
-            });
-    });
-
 }
 
-function addGroupSettings(containerEl, currentTag, app, plugin) {
-    new Setting(containerEl)
-        .setName("Additional Group Settings").setHeading()
-        .setDesc("Additional Group Settings to apply")
-
-    new Setting(containerEl)
-        .addSearch(search => search
-            .setPlaceholder('Select or type the property to group')
-            .onChange(async (value) => {
-            }));
-
-    new Setting(containerEl)
-        .addSearch(text => text
-            .setPlaceholder('Type direction of this group')
-            .onChange(async (value) => {
-            }));
-
-
-    new Setting(containerEl).addButton((cb) => {
-        cb.setButtonText("Add new group setting")
-            .setCta()
-            .onClick(async () => {
-                // Force refresh
-                this.display();
-            });
-    });
-}
-
-function addSortSettings(containerEl, currentTag, app, plugin) {
-    new Setting(containerEl)
-        .setName("Additional Sort Settings").setHeading()
-        .setDesc("Additional Sort Settings to apply")
-
-    new Setting(containerEl)
-        .addSearch(search => search
-            .setPlaceholder('Select or type the property to sort')
-            .onChange(async (value) => {
-
-            })
-        )
-    new Setting(containerEl)
-        .addText(text => text
-            .setPlaceholder('Type the direction of this sort')
-            .onChange(async (value) => {
-            }));
-
-    new Setting(containerEl).addButton((cb) => {
-        cb.setButtonText("Add new sort setting")
-            .setCta()
-            .onClick(async () => {
-                // Force refresh
-                this.display();
-            });
-    });
-}
 export class SettingTab extends PluginSettingTab {
     constructor(app, plugin) {
         super(app, plugin);
@@ -160,8 +109,6 @@ export class SettingTab extends PluginSettingTab {
             addRootTag(this.containerEl, currentTag, this.app, this.plugin);
             addView(this.containerEl, currentTag, this.plugin);
             addProperties(this.containerEl, currentTag, this.app, this.plugin);
-            addGroupSettings(this.containerEl, currentTag, this.app, this.plugin);
-            addSortSettings(this.containerEl, currentTag, this.app, this.plugin);
 
             new Setting(this.containerEl).addButton((cb) => {
                 cb.setButtonText("Delete this tag")
