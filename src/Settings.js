@@ -4,9 +4,8 @@ import { listTags } from "./plugin";
 const DEFAULT_OBJ = {
     tagname: '',
     viewtype: 'table',
-    orderproperties: [], 
-    groupproperties: [], //{property: '', direction: ''}
-    sortproperties: [], //{property: '', direction: ''}
+    manualPropertiesString: '',
+    baseJson: {},
 }
 export const DEFAULT_SETTINGS = {
     tagBaseFile: '',
@@ -68,7 +67,10 @@ function addProperties(containerEl, currentTag, app, plugin) {
         .setDesc(propertiesDescription)
         .addTextArea(text => text
             .setPlaceholder("Provide custom Base code. Use (rootTag) to reference the current root tag.")
+            .setValue(currentTag.manualPropertiesString)
             .onChange(async (value) => {
+                currentTag.manualPropertiesString = value;
+                await plugin.saveSettings();
             }));
 }
 
@@ -91,7 +93,7 @@ export class SettingTab extends PluginSettingTab {
                 .setPlaceholder('The tag base file to use')
                 .setValue(this.plugin.settings.tagBaseFile)
                 .onChange(async (value) => {
-
+                    
                 })
             )
 

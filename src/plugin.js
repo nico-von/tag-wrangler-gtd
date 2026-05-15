@@ -87,6 +87,7 @@ async function changeTagBaseContent(subTags, file, app, settings) {
             }
         })
 
+        // TODO: ENCODE THESE IN A JS OBJECT WHICH WILL BE CONVERTED TO YAML
         return [
         `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
         "\n",
