@@ -1,11 +1,13 @@
 import { PluginSettingTab, Setting, AbstractInputSuggest } from "obsidian";
 import { listTags } from "./plugin";
+import { parse, stringify } from 'yaml'
+import { Notice } from "obsidian";
 
 const DEFAULT_OBJ = {
     tagname: '',
     viewtype: 'table',
     manualPropertiesString: '',
-    baseJson: {},
+    baseObj: {},
 }
 export const DEFAULT_SETTINGS = {
     tagBaseFile: '',
@@ -44,6 +46,14 @@ function addView(containerEl, currentTag, plugin) {
                 await plugin.saveSettings();
             }));
 }
+function parseYaml(value) {
+    try {
+        return parse(value, {strict: false, logLevel: 'error'})
+    } catch(e) {
+        console.log(e)
+        new Notice(e)
+    }
+}
 
 function addProperties(containerEl, currentTag, app, plugin) {
     const propertiesDescription = new DocumentFragment();
@@ -69,6 +79,11 @@ function addProperties(containerEl, currentTag, app, plugin) {
             .setPlaceholder("Provide custom Base code. Use (rootTag) to reference the current root tag.")
             .setValue(currentTag.manualPropertiesString)
             .onChange(async (value) => {
+                const parsedYaml = parseYaml(value);
+                if (typeof parsedYaml !== 'string') {
+                    currentTag.baseObj = parsedYaml 
+                }
+                
                 currentTag.manualPropertiesString = value;
                 await plugin.saveSettings();
             }));
