@@ -25,6 +25,30 @@ const tagBaseRefObj = {
   ]
 }
 
+
+function deepMergeReplace(obj, targetObj) {
+    if (Array.isArray(obj)) {
+        return obj.map(item =>
+            deepMergeReplace(item, targetObj)
+        );
+    }
+
+    if (obj && typeof obj === "object") {
+
+        for (const [key, value] of Object.entries(obj)) {
+
+            if (key in targetObj) {
+                obj[key] = targetObj[key];
+            } else {
+                deepMergeReplace(
+                    value,
+                    targetObj
+                );
+            }
+        }
+    }
+}
+
 function onElement(el, event, selector, callback, options) {
     el.on(event, selector, callback, options)
     return () => el.off(event, selector, callback, options);
@@ -78,8 +102,12 @@ async function changeTagBaseContent(subTags, file, app, settings) {
     const {tagBaseSettings} = settings;
     const subTagSettingsApplied = subTags.map(e => {
         const setting = getInheritedSetting(e, tagBaseSettings);
+        const tagBaseObj = Object.assign({}, tagBaseRefObj);
+        if (setting && setting.baseObj) deepMergeReplace(tagBaseObj, setting.baseObj)
+        if (setting && setting.baseObj) console.log(setting.baseObj, tagBaseObj)
         const tagObject = {
             tag: new Tag(e),
+            tagBaseObj
         };
 
         if (setting) {
