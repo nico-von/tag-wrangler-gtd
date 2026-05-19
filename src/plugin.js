@@ -6,6 +6,24 @@ import {around} from "monkey-around";
 import {Confirm, use} from "@ophidian/core";
 
 const tagHoverMain = "tag-wrangler:tag-pane";
+const tagBaseRefObj = {
+  views: [
+    {
+      type: 'table',
+      name: 'table',
+      filters: {
+        and: [
+        ]
+      },
+      groupBy: {
+      },
+      order: [
+      ],
+      "sort": [
+      ]
+    }
+  ]
+}
 
 function onElement(el, event, selector, callback, options) {
     el.on(event, selector, callback, options)
