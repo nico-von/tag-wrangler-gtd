@@ -12,7 +12,7 @@ const DEFAULT_OBJ = {
 export const DEFAULT_SETTINGS = {
     tagBaseFile: '',
     tagBaseSettings: [
-        Object.assign({}, DEFAULT_OBJ)
+        JSON.parse(JSON.stringify(DEFAULT_OBJ))
     ]
 }
 

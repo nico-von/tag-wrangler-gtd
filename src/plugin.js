@@ -102,21 +102,25 @@ async function changeTagBaseContent(subTags, file, app, settings) {
     const {tagBaseSettings} = settings;
     const subTagSettingsApplied = subTags.map(e => {
         const setting = getInheritedSetting(e, tagBaseSettings);
-        const tagBaseObj = Object.assign({}, tagBaseRefObj);
-        if (setting && setting.baseObj) deepMergeReplace(tagBaseObj, setting.baseObj)
-        if (setting && setting.baseObj) console.log(setting.baseObj, tagBaseObj)
+        const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
+        if (setting && setting.baseObj && Object.keys(setting.baseObj).length > 0) {
+            deepMergeReplace(tagBaseObj, setting.baseObj)
+        } else if (setting) {
+            deepMergeReplace(tagBaseObj, {
+                type: setting.viewtype,
+                name: setting.viewtype,
+            })
+        }
+
         const tagObject = {
             tag: new Tag(e),
             tagBaseObj
         };
 
-        if (setting) {
-            tagObject.viewtype = setting.viewtype;
-            tagObject.addproperties = setting.addproperties;
-        }
-
         return tagObject;
     });
+
+    console.log(subTagSettingsApplied)
 
     let highestLevel = 0;
 
