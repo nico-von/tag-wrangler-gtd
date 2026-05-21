@@ -1,28 +1,28 @@
-import {Component, Keymap, Menu, Notice, parseFrontMatterAliases, Plugin} from "obsidian";
-import {DEFAULT_SETTINGS, SettingTab} from "./Settings";
-import {renameTag, findTargets} from "./renaming";
-import {Tag} from "./Tag";
-import {around} from "monkey-around";
-import {Confirm, use} from "@ophidian/core";
+import { Component, Keymap, Menu, Notice, parseFrontMatterAliases, Plugin } from "obsidian";
+import { DEFAULT_SETTINGS, SettingTab } from "./Settings";
+import { renameTag, findTargets } from "./renaming";
+import { Tag } from "./Tag";
+import { around } from "monkey-around";
+import { Confirm, use } from "@ophidian/core";
 
 const tagHoverMain = "tag-wrangler:tag-pane";
 const tagBaseRefObj = {
-  views: [
-    {
-      type: 'table',
-      name: 'table',
-      filters: {
-        and: [
-        ]
-      },
-      groupBy: {
-      },
-      order: [
-      ],
-      "sort": [
-      ]
-    }
-  ]
+    views: [
+        {
+            type: 'table',
+            name: 'table',
+            filters: {
+                and: [
+                ]
+            },
+            groupBy: {
+            },
+            order: [
+            ],
+            "sort": [
+            ]
+        }
+    ]
 }
 
 
@@ -60,8 +60,8 @@ function tagSort(a, b) {
 
     // Compare each level
     for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
-    if (aParts[i] !== bParts[i]) {
-        return aParts[i].localeCompare(bParts[i]);
+        if (aParts[i] !== bParts[i]) {
+            return aParts[i].localeCompare(bParts[i]);
         }
     }
 
@@ -70,18 +70,18 @@ function tagSort(a, b) {
 }
 
 export function listTags(app, baseTag = null) {
-  const tags = Object.keys(app.metadataCache.getTags());
+    const tags = Object.keys(app.metadataCache.getTags());
 
-  if (baseTag) {
-    const tag = new Tag(baseTag);
+    if (baseTag) {
+        const tag = new Tag(baseTag);
 
-    return tags
-    .filter(t => tag.matches(t))
-    .sort(tagSort);
-  }
+        return tags
+            .filter(t => tag.matches(t))
+            .sort(tagSort);
+    }
 
-  return tags.sort(tagSort);
-    
+    return tags.sort(tagSort);
+
 }
 
 function getInheritedSetting(tag, settings) {
@@ -98,33 +98,77 @@ function getInheritedSetting(tag, settings) {
     return null;
 }
 
+function makeFilterObj(tag, arr) {
+    const filterArray = [];
+    arr
+        .filter(e => e.includes(tag.tag))
+        .forEach((tagItem, j) => {
+            const tag = new Tag(tagItem)
+            if (j === 0) {
+                filterArray.push(`file.hasTag("${tag.name}")`)
+            } else {
+                filterArray.push(`'!file.hasTag("${tag.name}")'`)
+            }
+        })
+    return {
+        filters: {
+            and: filterArray
+        }
+    };
+}
+
 async function changeTagBaseContent(subTags, file, app, settings) {
-    const {tagBaseSettings} = settings;
-    const subTagSettingsApplied = subTags.map(e => {
+    const { tagBaseSettings } = settings;
+    const subTagSettingsApplied = subTags.map((e, i, arr) => {
+        const tag = new Tag(e);
         const setting = getInheritedSetting(e, tagBaseSettings);
         const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
-        if (setting && setting.baseObj && Object.keys(setting.baseObj).length > 0) {
-            deepMergeReplace(tagBaseObj, setting.baseObj)
-        } else if (setting) {
-            deepMergeReplace(tagBaseObj, {
-                type: setting.viewtype,
-                name: setting.viewtype,
-            })
+        if (setting) {
+            const { baseObj, viewtype } = setting;
+            const hasBaseObj = baseObj && Object.keys(baseObj).length > 0;
+
+            if (hasBaseObj) {
+
+                const hasViews = !!baseObj.views;
+                const hasType = !!baseObj.type;
+                const hasFilters = !!baseObj.filters;
+
+                if (!hasViews && !hasType) {
+                    deepMergeReplace(tagBaseObj, {
+                        type: viewtype,
+                        name: viewtype,
+                    });
+                }
+
+                if (!hasViews && !hasFilters) {
+                    deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
+                }
+
+                deepMergeReplace(tagBaseObj, baseObj);
+
+            } else {
+
+                deepMergeReplace(tagBaseObj, {
+                    type: viewtype,
+                    name: viewtype,
+                });
+
+                deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
+            }
         }
 
+
         const tagObject = {
-            tag: new Tag(e),
+            tag,
             tagBaseObj
         };
-
+        console.log(tagObject)
         return tagObject;
     });
 
-    console.log(subTagSettingsApplied)
-
     let highestLevel = 0;
 
-    const subTagBaseStringsArr = subTagSettingsApplied.map((e, i, arr) => { 
+    const subTagBaseStringsArr = subTagSettingsApplied.map((e, i, arr) => {
         const tagName = e.tag.name;
         const tagLevel = e.tag.level;
         highestLevel = i === 0 ? tagLevel : highestLevel;
@@ -139,22 +183,22 @@ async function changeTagBaseContent(subTags, file, app, settings) {
 
         // TODO: ENCODE THESE IN A JS OBJECT WHICH WILL BE CONVERTED TO YAML
         return [
-        `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
-        "\n",
-        "```base",
-        "views:",
-        `  - type: ${e.viewtype ? e.viewtype : 'table'}`,
-        `    name: ${e.viewtype ? e.viewtype : 'table'}`,
-        "    filters:",
-        "      and:",
-        ...filterArr,
-        "```"
+            `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
+            "\n",
+            "```base",
+            "views:",
+            `  - type: ${e.viewtype ? e.viewtype : 'table'}`,
+            `    name: ${e.viewtype ? e.viewtype : 'table'}`,
+            "    filters:",
+            "      and:",
+            ...filterArr,
+            "```"
         ].join("\n"); //allow this to be manipulated in settings perhaps
     })
 
     const tagBaseString = subTagBaseStringsArr.join("\n".repeat(3));
 
-    if(file) {
+    if (file) {
         await app.vault.modify(file, tagBaseString)
     }
 }
@@ -169,16 +213,16 @@ export default class TagWrangler extends Plugin {
     }
 
     async openBasePage(tagName, newLeaf) {
-      const subtags = listTags(this.app, tagName);
-      const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
-      await changeTagBaseContent(subtags, file, this.app, this.settings);
-      return this.app.workspace.getLeaf(newLeaf).openFile(file);  
+        const subtags = listTags(this.app, tagName);
+        const file = this.app.vault.getAbstractFileByPath("tagbase.md"); //hardcode for now
+        await changeTagBaseContent(subtags, file, this.app, this.settings);
+        return this.app.workspace.getLeaf(newLeaf).openFile(file);
     }
 
     openTagPage(file, isNew, newLeaf) {
         const openState = {
-            eState: isNew ? {rename: "all"} : {focus: true},  // Rename new page, focus existing
-            ...(isNew ? {state: {mode: "source"}} : {})       // and set source mode for new page
+            eState: isNew ? { rename: "all" } : { focus: true },  // Rename new page, focus existing
+            ...(isNew ? { state: { mode: "source" } } : {})       // and set source mode for new page
         }
         return this.app.workspace.getLeaf(newLeaf).openFile(file, openState);
     }
@@ -191,7 +235,7 @@ export default class TagWrangler extends Plugin {
         if (!file) {
             const baseName = new Tag(tagName).name.split("/").join(" ");
             const folder = this.app.fileManager.getNewFileParent(this.app.workspace.getActiveFile()?.path || "");
-            const path = this.app.vault.getAvailablePath(folder.getParentPrefix()+baseName, "md");
+            const path = this.app.vault.getAvailablePath(folder.getParentPrefix() + baseName, "md");
             file = await this.app.vault.create(path, [
                 "---",
                 `Aliases: [ ${JSON.stringify(Tag.toTag(tagName))} ]`,
@@ -204,7 +248,7 @@ export default class TagWrangler extends Plugin {
         app.workspace.trigger("tag-page:did-create", tp_evt);
     }
 
-    async onload(){
+    async onload() {
         await this.loadSettings();
 
         this.registerEvent(
@@ -215,10 +259,10 @@ export default class TagWrangler extends Plugin {
         )
 
         this.register(
-            onElement(document, "contextmenu", ".tag-pane-tag", this.onMenu.bind(this), {capture: true})
+            onElement(document, "contextmenu", ".tag-pane-tag", this.onMenu.bind(this), { capture: true })
         );
 
-        this.app.workspace.registerHoverLinkSource(tagHoverMain, {display: 'Tags View', defaultMod: true});
+        this.app.workspace.registerHoverLinkSource(tagHoverMain, { display: 'Tags View', defaultMod: true });
 
         this.addChild(
             // Tags in the tags view
@@ -255,10 +299,10 @@ export default class TagWrangler extends Plugin {
                 toTag(el) {
                     // Multiple cm-hashtag elements can be side by side: join them all together:
                     let tagName = el.textContent;
-                    if (!el.matches(".cm-formatting")) for (let t=el.previousElementSibling; t?.matches("span.cm-hashtag:not(.cm-formatting)"); t = t.previousElementSibling) {
+                    if (!el.matches(".cm-formatting")) for (let t = el.previousElementSibling; t?.matches("span.cm-hashtag:not(.cm-formatting)"); t = t.previousElementSibling) {
                         tagName = t.textContent + tagName;
                     }
-                    for (let t=el.nextElementSibling; t?.matches("span.cm-hashtag:not(.cm-formatting)"); t = t.nextElementSibling) {
+                    for (let t = el.nextElementSibling; t?.matches("span.cm-hashtag:not(.cm-formatting)"); t = t.nextElementSibling) {
                         tagName += t.textContent;
                     }
                     return tagName;
@@ -271,12 +315,12 @@ export default class TagWrangler extends Plugin {
         this.register(
             onElement(document, "pointerdown", ".tag-pane-tag", (_, targetEl) => {
                 targetEl.draggable = "true";
-            }, {capture: true})
+            }, { capture: true })
         );
         this.register(
             onElement(document, "dragstart", ".tag-pane-tag", (event, targetEl) => {
                 const tagName = targetEl.find(".tag-pane-tag-text, tag-pane-tag-text, .tag-pane-tag .tree-item-inner-text")?.textContent;
-                event.dataTransfer.setData("text/plain", "#"+tagName);
+                event.dataTransfer.setData("text/plain", "#" + tagName);
                 app.dragManager.onDragStart(event, {
                     source: "tag-wrangler",
                     type: "text",
@@ -290,13 +334,13 @@ export default class TagWrangler extends Plugin {
                     window.removeEventListener("dragend", release, true);
                     window.removeEventListener("drop", release, true);
                 }
-            }, {capture: false})
+            }, { capture: false })
         );
 
         const dropHandler = (e, targetEl, info = app.dragManager.draggable, drop) => {
-            if (info?.source !== "tag-wrangler" || e.defaultPrevented ) return;
+            if (info?.source !== "tag-wrangler" || e.defaultPrevented) return;
             const tag = targetEl.find(".tag-pane-tag-text, tag-pane-tag-text, .tag-pane-tag .tree-item-inner-text")?.textContent;
-            const dest = tag+"/"+Tag.toName(info.title).split("/").pop();
+            const dest = tag + "/" + Tag.toName(info.title).split("/").pop();
             if (Tag.canonical(tag) === Tag.canonical(info.title)) return;
             e.dataTransfer.dropEffect = "move";
             e.preventDefault();
@@ -308,15 +352,15 @@ export default class TagWrangler extends Plugin {
             }
         }
 
-        this.register(onElement(document.body, "dragover", ".tag-pane-tag.tree-item-self", dropHandler, {capture: true}));
-        this.register(onElement(document.body, "dragenter", ".tag-pane-tag.tree-item-self", dropHandler, {capture: true}));
+        this.register(onElement(document.body, "dragover", ".tag-pane-tag.tree-item-self", dropHandler, { capture: true }));
+        this.register(onElement(document.body, "dragenter", ".tag-pane-tag.tree-item-self", dropHandler, { capture: true }));
         // This has to be registered on the window so that it will still get the .draggable
         this.registerDomEvent(window, "drop", e => {
             const targetEl = e.target?.matchParent(".tag-pane-tag.tree-item-self", e.currentTarget);
             if (!targetEl) return;
             const info = app.dragManager.draggable;
             if (info && !e.defaultPrevented) dropHandler(e, targetEl, info, true);
-        }, {capture: true});
+        }, { capture: true });
 
         // Track Tag Pages
         const metaCache = this.app.metadataCache;
@@ -344,20 +388,20 @@ export default class TagWrangler extends Plugin {
             });
             this.registerEvent(metaCache.on("changed", (file, data, cache) => this.updatePage(file, cache?.frontmatter)));
             this.registerEvent(this.app.vault.on("delete", file => this.updatePage(file)));
-            app.workspace.getLeavesOfType("tag").forEach(leaf => {leaf?.view?.requestUpdateTags?.()});
+            app.workspace.getLeavesOfType("tag").forEach(leaf => { leaf?.view?.requestUpdateTags?.() });
         });
-        
+
         // This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SettingTab(this.app, this));
+        this.addSettingTab(new SettingTab(this.app, this));
     }
 
     async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
 
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
 
     updatePage(file, frontmatter) {
         const tags = parseFrontMatterAliases(frontmatter)?.filter(Tag.isTag) || [];
@@ -393,23 +437,23 @@ export default class TagWrangler extends Plugin {
         const
             tagName = tagEl.find(".tag-pane-tag-text, .tag-pane-tag .tree-item-inner-text").textContent,
             isHierarchy = tagEl.parentElement.parentElement.find(".collapse-icon")
-        ;
+            ;
         this.setupMenu(menu, tagName, isHierarchy);
         if (isHierarchy) {
             const
                 tagParent = tagName.split("/").slice(0, -1).join("/"),
                 tagView = this.leafView(tagEl.matchParent(".workspace-leaf")),
-                tagContainer = tagParent ? tagView.tagDoms["#" + tagParent.toLowerCase()]: tagView.root
-            ;
+                tagContainer = tagParent ? tagView.tagDoms["#" + tagParent.toLowerCase()] : tagView.root
+                ;
             function toggle(collapse) {
-                for(const tag of tagContainer.children ?? tagContainer.vChildren.children) tag.setCollapsed(collapse);
+                for (const tag of tagContainer.children ?? tagContainer.vChildren.children) tag.setCollapsed(collapse);
             }
-            menu.addItem(item("tag-hierarchy", "vertical-three-dots", "Collapse tags at this level", () => toggle(true )))
-                .addItem(item("tag-hierarchy", "expand-vertically"  , "Expand tags at this level"  , () => toggle(false)))
+            menu.addItem(item("tag-hierarchy", "vertical-three-dots", "Collapse tags at this level", () => toggle(true)))
+                .addItem(item("tag-hierarchy", "expand-vertically", "Expand tags at this level", () => toggle(false)))
         }
     }
 
-    setupMenu(menu, tagName, isHierarchy=false) {
+    setupMenu(menu, tagName, isHierarchy = false) {
         tagName = Tag.toTag(tagName).slice(1);
         const
             tagPage = this.tagPage(tagName),
@@ -417,9 +461,9 @@ export default class TagWrangler extends Plugin {
             search = searchPlugin && searchPlugin.instance,
             query = search && search.getGlobalSearchQuery(),
             random = this.app.plugins.plugins["smart-random-note"]
-        ;
-        menu.addItem(item("tag-base-up", "popup-open", "Open base view of #"+tagName, (e) => this.openBasePage(tagName, Keymap.isModEvent(e)) ))
-        menu.addItem(item("tag-rename", "pencil", "Rename #"+tagName, () => this.rename(tagName)))
+            ;
+        menu.addItem(item("tag-base-up", "popup-open", "Open base view of #" + tagName, (e) => this.openBasePage(tagName, Keymap.isModEvent(e))))
+        menu.addItem(item("tag-rename", "pencil", "Rename #" + tagName, () => this.rename(tagName)))
 
         if (tagPage) {
             menu.addItem(
@@ -433,15 +477,15 @@ export default class TagWrangler extends Plugin {
 
         if (search) {
             menu.addItem(
-                item("tag-search", "magnifying-glass", "New search for #"+tagName, () => search.openGlobalSearch("tag:#" + tagName))
+                item("tag-search", "magnifying-glass", "New search for #" + tagName, () => search.openGlobalSearch("tag:#" + tagName))
             );
             if (query) {
                 menu.addItem(
-                    item("tag-search", "sheets-in-box", "Require #"+tagName+" in search"  , () => search.openGlobalSearch(query+" tag:#"  + tagName))
+                    item("tag-search", "sheets-in-box", "Require #" + tagName + " in search", () => search.openGlobalSearch(query + " tag:#" + tagName))
                 );
             }
             menu.addItem(
-                item("tag-search", "crossed-star" , "Exclude #"+tagName+" from search", () => search.openGlobalSearch(query+" -tag:#" + tagName))
+                item("tag-search", "crossed-star", "Exclude #" + tagName + " from search", () => search.openGlobalSearch(query + " -tag:#" + tagName))
             );
         }
 
@@ -449,12 +493,12 @@ export default class TagWrangler extends Plugin {
             menu.addItem(
                 item("tag-random", "dice", "Open random note", async () => {
                     const targets = await findTargets(this.app, new Tag(tagName));
-                    random.openRandomNote(targets.map(f=> this.app.vault.getAbstractFileByPath(f.filename)));
+                    random.openRandomNote(targets.map(f => this.app.vault.getAbstractFileByPath(f.filename)));
                 })
             );
         }
 
-        this.app.workspace.trigger("tag-wrangler:contextmenu", menu, tagName, {search, query, isHierarchy, tagPage});
+        this.app.workspace.trigger("tag-wrangler:contextmenu", menu, tagName, { search, query, isHierarchy, tagPage });
     }
 
     leafView(containerEl) {
@@ -466,7 +510,7 @@ export default class TagWrangler extends Plugin {
     }
 
 
-    async rename(tagName, toName=tagName) {
+    async rename(tagName, toName = tagName) {
         try { await renameTag(this.app, tagName, toName); }
         catch (e) { console.error(e); new Notice("error: " + e); }
     }
@@ -488,7 +532,7 @@ class TagPageUIHandler extends Component {
     }
 
     onload() {
-        const {selector, container, hoverSource, toTag, mergeMenu } = this.opts;
+        const { selector, container, hoverSource, toTag, mergeMenu } = this.opts;
         this.register(
             // Show tag page on hover
             onElement(document, "mouseover", selector, (event, targetEl) => {
@@ -497,7 +541,7 @@ class TagPageUIHandler extends Component {
                     event, source: hoverSource, targetEl, linktext: tp.path,
                     hoverParent: targetEl.matchParent(container)
                 });
-            }, {capture: false})
+            }, { capture: false })
         );
 
         const self = this;
@@ -516,22 +560,26 @@ class TagPageUIHandler extends Component {
                             }
                         });
                         if (Menu.forEvent) {
-                            const remove2 = around(Menu, {forEvent(old) { return function (ev) {
-                                const m = old.call(this, e);
-                                if (ev === e) {
-                                    self.plugin.setupMenu(m, toTag(targetEl));
-                                    remove();
+                            const remove2 = around(Menu, {
+                                forEvent(old) {
+                                    return function (ev) {
+                                        const m = old.call(this, e);
+                                        if (ev === e) {
+                                            self.plugin.setupMenu(m, toTag(targetEl));
+                                            remove();
+                                        }
+                                        remove2()
+                                        return m;
+                                    }
                                 }
-                                remove2()
-                                return m;
-                            }}})
+                            })
                             setTimeout(remove2, 0);
                         }
                         setTimeout(remove, 0);
                         return
                     }
                     this.plugin.setupMenu(menuForEvent(e), toTag(targetEl));
-                }, {capture: !!mergeMenu})
+                }, { capture: !!mergeMenu })
             );
             this.register(
                 onElement(document, "dragstart", selector, (event, targetEl) => {
@@ -543,14 +591,14 @@ class TagPageUIHandler extends Component {
                         title: tagName,
                         icon: "hashtag",
                     })
-                }, {capture: false})
+                }, { capture: false })
             );
         }
 
         this.register(
             // Open tag page w/alt click (current pane) or ctrl/cmd/middle click (new pane)
             onElement(document, hoverSource === "editor" ? "mousedown" : "click", selector, (event, targetEl) => {
-                const {altKey} = event;
+                const { altKey } = event;
                 const isMod = Keymap.isModEvent(event);
                 if (!isMod && !altKey) return;
                 const tagName = toTag(targetEl), tp = tagName && this.plugin.tagPage(tagName);
@@ -566,12 +614,12 @@ class TagPageUIHandler extends Component {
                             const search = app.internalPlugins.getPluginById("global-search")?.instance;
                             search?.openGlobalSearch("tag:#" + tagName)
                         })
-                    ;
+                        ;
                 }
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 return false;
-            }, {capture: true})
+            }, { capture: true })
         );
     }
 }
@@ -583,7 +631,7 @@ function menuForEvent(e) {
     let menu = e.obsidian_contextmenu;
     if (!menu) {
         menu = e.obsidian_contextmenu = new Menu();
-        setTimeout(() => menu.showAtPosition({x: e.pageX, y: e.pageY}), 0);
+        setTimeout(() => menu.showAtPosition({ x: e.pageX, y: e.pageY }), 0);
     }
     return menu
 }
