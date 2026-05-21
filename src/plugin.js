@@ -26,6 +26,45 @@ const tagBaseRefObj = {
     ]
 }
 
+function deepRemoveEmptyChildren(obj) {
+
+    if (Array.isArray(obj)) {
+        return obj
+            .map(deepRemoveEmptyChildren)
+            .filter(value => {
+                if (Array.isArray(value)) return value.length > 0;
+                if (value && typeof value === "object") {
+                    return Object.keys(value).length > 0;
+                }
+                return value !== undefined;
+            });
+    }
+
+    if (obj && typeof obj === "object") {
+
+        for (const key of Object.keys(obj)) {
+            obj[key] = deepRemoveEmptyChildren(obj[key]);
+
+            const value = obj[key];
+
+            const isEmptyObject =
+                value &&
+                typeof value === "object" &&
+                !Array.isArray(value) &&
+                Object.keys(value).length === 0;
+
+            const isEmptyArray =
+                Array.isArray(value) &&
+                value.length === 0;
+
+            if (isEmptyObject || isEmptyArray) {
+                delete obj[key];
+            }
+        }
+    }
+
+    return obj;
+}
 
 function deepMergeReplace(obj, targetObj) {
     if (Array.isArray(obj)) {
@@ -100,7 +139,6 @@ function getInheritedSetting(tag, settings) {
 }
 
 function makeFilterObj(tag, arr) {
-    console.log(tag)
     const filterArray = [];
     arr
         .filter(e => e.includes(tag.tag))
@@ -163,6 +201,7 @@ async function changeTagBaseContent(subTags, file, app, settings) {
             }
         }
 
+        deepRemoveEmptyChildren(tagBaseObj);
 
         const tagObject = {
             tag,
