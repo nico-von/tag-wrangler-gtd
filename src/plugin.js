@@ -4,6 +4,7 @@ import { renameTag, findTargets } from "./renaming";
 import { Tag } from "./Tag";
 import { around } from "monkey-around";
 import { Confirm, use } from "@ophidian/core";
+import { stringify } from "yaml";
 
 const tagHoverMain = "tag-wrangler:tag-pane";
 const tagBaseRefObj = {
@@ -162,7 +163,6 @@ async function changeTagBaseContent(subTags, file, app, settings) {
             tag,
             tagBaseObj
         };
-        console.log(tagObject)
         return tagObject;
     });
 
@@ -172,26 +172,12 @@ async function changeTagBaseContent(subTags, file, app, settings) {
         const tagName = e.tag.name;
         const tagLevel = e.tag.level;
         highestLevel = i === 0 ? tagLevel : highestLevel;
-        const filterArr = [];
-        arr.slice(i).forEach((tagItem, j) => {
-            if (j === 0) {
-                filterArr.push(`        - file.hasTag("${tagItem.tag.name}")`)
-            } else {
-                filterArr.push(`        - '!file.hasTag("${tagItem.tag.name}")'`)
-            }
-        })
 
-        // TODO: ENCODE THESE IN A JS OBJECT WHICH WILL BE CONVERTED TO YAML
         return [
             `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
             "\n",
             "```base",
-            "views:",
-            `  - type: ${e.viewtype ? e.viewtype : 'table'}`,
-            `    name: ${e.viewtype ? e.viewtype : 'table'}`,
-            "    filters:",
-            "      and:",
-            ...filterArr,
+            stringify(e.tagBaseObj),
             "```"
         ].join("\n"); //allow this to be manipulated in settings perhaps
     })
