@@ -100,15 +100,16 @@ function getInheritedSetting(tag, settings) {
 }
 
 function makeFilterObj(tag, arr) {
+    console.log(tag)
     const filterArray = [];
     arr
         .filter(e => e.includes(tag.tag))
         .forEach((tagItem, j) => {
-            const tag = new Tag(tagItem)
+            const t = new Tag(tagItem)
             if (j === 0) {
-                filterArray.push(`file.hasTag("${tag.name}")`)
+                filterArray.push(`file.hasTag("${t.name}")`)
             } else {
-                filterArray.push(`'!file.hasTag("${tag.name}")'`)
+                filterArray.push(`!file.hasTag("${t.name}")`)
             }
         })
     return {
@@ -124,37 +125,41 @@ async function changeTagBaseContent(subTags, file, app, settings) {
         const tag = new Tag(e);
         const setting = getInheritedSetting(e, tagBaseSettings);
         const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
-        if (setting) {
+        const applyDefaultView = (viewtype = 'table') => {
+            deepMergeReplace(tagBaseObj, {
+                type: viewtype,
+                name: viewtype,
+            });
+        };
+
+        const applyFilter = () => {
+            deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
+        };
+
+        if (!setting) {
+            applyDefaultView();
+            applyFilter();
+
+        } else {
             const { baseObj, viewtype } = setting;
             const hasBaseObj = baseObj && Object.keys(baseObj).length > 0;
 
-            if (hasBaseObj) {
+            if (!hasBaseObj) {
+                applyDefaultView(viewtype);
+                applyFilter();
 
+            } else {
                 const hasViews = !!baseObj.views;
-                const hasType = !!baseObj.type;
-                const hasFilters = !!baseObj.filters;
 
-                if (!hasViews && !hasType) {
-                    deepMergeReplace(tagBaseObj, {
-                        type: viewtype,
-                        name: viewtype,
-                    });
+                if (!hasViews && !baseObj.type) {
+                    applyDefaultView(viewtype);
                 }
 
-                if (!hasViews && !hasFilters) {
-                    deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
+                if (!hasViews && !baseObj.filters) {
+                    applyFilter();
                 }
 
                 deepMergeReplace(tagBaseObj, baseObj);
-
-            } else {
-
-                deepMergeReplace(tagBaseObj, {
-                    type: viewtype,
-                    name: viewtype,
-                });
-
-                deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
             }
         }
 
