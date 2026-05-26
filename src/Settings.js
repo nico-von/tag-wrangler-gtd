@@ -5,6 +5,7 @@ import { Notice } from "obsidian";
 
 const DEFAULT_OBJ = {
     tagname: '',
+    accompanyingTagRoots: [],
     viewtype: 'table',
     manualPropertiesString: '',
     baseObj: {},
@@ -22,7 +23,7 @@ function addRootTag(containerEl, currentTag, app, plugin) {
         .setName('Root Tag')
         .setDesc('Root tag to apply these settings')
         .addSearch(search => {
-            new TagSuggest(app, search.inputEl);
+            new TagSuggest(app, search);
             search.setPlaceholder('Search for the root tag')
                 .setValue(currentTag.tagname)
                 .onChange(async (value) => {
@@ -30,6 +31,25 @@ function addRootTag(containerEl, currentTag, app, plugin) {
                     await plugin.saveSettings();
                 })
         });
+}
+
+function addAccompanyingTagRoots(containerEl, currentTag, app, plugin) {
+    new Setting(containerEl)
+        .setName('Accompanying Tag Roots')
+        .setDesc('Other root tags accompanying the root tag to apply these settings')
+        .addTextArea(textArea => {
+            new AccompanyingTagSuggest(app, textArea);
+            textArea.setPlaceholder('Search for accompanying root tags')
+                .setValue(currentTag.accompanyingTagRoots.join('\n'))
+                .onChange(async (value) => {
+                    currentTag.accompanyingTagRoots = value
+                        .split("\n")
+                        .map(l => l.trim())
+                        .filter(Boolean);
+                    await plugin.saveSettings();
+                })
+
+        })
 }
 
 function addView(containerEl, currentTag, plugin) {
@@ -48,8 +68,8 @@ function addView(containerEl, currentTag, plugin) {
 }
 function parseYaml(value) {
     try {
-        return parse(value, {strict: false, logLevel: 'error'})
-    } catch(e) {
+        return parse(value, { strict: false, logLevel: 'error' })
+    } catch (e) {
         console.log(e)
         new Notice(e)
     }
@@ -81,9 +101,9 @@ function addProperties(containerEl, currentTag, app, plugin) {
             .onChange(async (value) => {
                 const parsedYaml = parseYaml(value);
                 if (typeof parsedYaml !== 'string') {
-                    currentTag.baseObj = parsedYaml 
+                    currentTag.baseObj = parsedYaml
                 }
-                
+
                 currentTag.manualPropertiesString = value;
                 await plugin.saveSettings();
             }));
@@ -108,7 +128,7 @@ export class SettingTab extends PluginSettingTab {
                 .setPlaceholder('The tag base file to use')
                 .setValue(this.plugin.settings.tagBaseFile)
                 .onChange(async (value) => {
-                    
+
                 })
             )
 
@@ -124,6 +144,7 @@ export class SettingTab extends PluginSettingTab {
                 .setDesc(`Settings for ${currentTagName}`)
 
             addRootTag(this.containerEl, currentTag, this.app, this.plugin);
+            addAccompanyingTagRoots(this.containerEl, currentTag, this.app, this.plugin);
             addView(this.containerEl, currentTag, this.plugin);
             addProperties(this.containerEl, currentTag, this.app, this.plugin);
 
@@ -161,16 +182,16 @@ export class SettingTab extends PluginSettingTab {
 }
 
 class TagSuggest extends AbstractInputSuggest {
-    constructor(app, inputEl) {
-        super(app, inputEl);
+    constructor(app, component) {
+        super(app, component.inputEl);
         this.app = app;
-        this.inputEl = inputEl;
+        this.component = component;
     }
 
     getSuggestions(inputStr) {
         const lowerCaseInputStr = inputStr.toLocaleLowerCase();
         const tags = listTags(this.app);
-        return [...tags].filter((e) => e.toLocaleLowerCase().contains(lowerCaseInputStr))
+        return [...tags].filter((e) => e.toLocaleLowerCase().includes(lowerCaseInputStr))
     }
 
     renderSuggestion(content, el) {
@@ -178,8 +199,25 @@ class TagSuggest extends AbstractInputSuggest {
     }
 
     selectSuggestion(value) {
-        this.setValue(value);
-        this.inputEl.trigger("input")
+        this.component.setValue(value);
+        this.component.inputEl.trigger("input")
+        this.close();
+    }
+}
+
+class AccompanyingTagSuggest extends TagSuggest {
+    constructor(app, component) {
+        super(app, component);
+    }
+
+    selectSuggestion(value) {
+        const tags = this.component.getValue()
+            .split("\n")
+            .map(t => t.trim())
+            .filter(Boolean);
+        tags.push(value)
+        this.component.setValue(tags.join("\n"));
+        this.component.inputEl.trigger("input");
         this.close();
     }
 }
