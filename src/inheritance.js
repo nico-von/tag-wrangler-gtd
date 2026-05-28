@@ -34,17 +34,22 @@ export function getInheritedSetting(tag, settings) {
     for (let i = parts.length; i > 0; i--) {
         const current = parts.slice(0, i).join("/");
 
-        const found = settings.find(s =>
-            s.tagname === current || matchesPattern(s.tagname, current)
-        );
+        const foundSettings = settings.filter(s => {
+            if (!(s.tagname === current || matchesPattern(s.tagname, current))) {
+                return false;
+            }
 
-        if (!found) continue;
-        if (found.tagname === tag) return found;
+            return (
+                s.tagname === tag ||
+                s.settingInheritable ||
+                matchesPattern(s.tagname, tag)
+            );
+        });
 
-        if (found.settingInheritable || matchesPattern(found.tagname, tag)) {
-            return found;
+        if (foundSettings.length > 0) {
+            return foundSettings;
         }
     }
 
-    return null;
+    return [];
 }
