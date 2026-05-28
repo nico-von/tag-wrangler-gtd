@@ -5,6 +5,7 @@ import { Tag } from "./Tag";
 import { around } from "monkey-around";
 import { Confirm, use } from "@ophidian/core";
 import { stringify } from "yaml";
+import { getInheritedSetting } from "./inheritance";
 
 const tagHoverMain = "tag-wrangler:tag-pane";
 const tagBaseRefObj = {
@@ -20,7 +21,7 @@ const tagBaseRefObj = {
             },
             order: [
             ],
-            "sort": [
+            sort: [
             ]
         }
     ]
@@ -110,6 +111,11 @@ function tagSort(a, b) {
 }
 
 export function listTags(app, baseTag = null) {
+    // const files = app.vault.getMarkdownFiles();
+    // files.forEach(e => {
+    //     console.log(app.metadataCache.getFileCache(e)?.tags)
+    // })
+
     const tags = Object.keys(app.metadataCache.getTags());
 
     if (baseTag) {
@@ -122,20 +128,6 @@ export function listTags(app, baseTag = null) {
 
     return tags.sort(tagSort);
 
-}
-
-function getInheritedSetting(tag, settings) {
-    const parts = tag.split("/");
-
-    for (let i = parts.length; i > 0; i--) {
-        const current = parts.slice(0, i).join("/");
-
-        const found = settings.find(s => s.tagname === current);
-
-        if (found) return found;
-    }
-
-    return null;
 }
 
 function makeFilterObj(tag, arr) {
@@ -181,7 +173,6 @@ async function changeTagBaseContent(subTags, file, app, settings) {
         } else {
             const { baseObj, viewtype } = setting;
             const hasBaseObj = baseObj && Object.keys(baseObj).length > 0;
-
             if (!hasBaseObj) {
                 applyDefaultView(viewtype);
                 applyFilter();
