@@ -5,6 +5,7 @@ import { Notice } from "obsidian";
 
 const DEFAULT_OBJ = {
     tagname: '',
+    settingInheritable: true,
     accompanyingTagRoots: [],
     viewtype: 'table',
     manualPropertiesString: '',
@@ -21,7 +22,7 @@ export const DEFAULT_SETTINGS = {
 function addRootTag(containerEl, currentTag, app, plugin) {
     new Setting(containerEl)
         .setName('Root Tag')
-        .setDesc('Root tag to apply these settings')
+        .setDesc('Root tag to apply these settings. Wildcards: use `...` for one subtag, `$$$` for one more subtags')
         .addSearch(search => {
             new TagSuggest(app, search);
             search.setPlaceholder('Search for the root tag')
@@ -33,10 +34,22 @@ function addRootTag(containerEl, currentTag, app, plugin) {
         });
 }
 
+function addInheritToggle(containerEl, currentTag, plugin) {
+    new Setting(containerEl)
+        .setName('Can be inherited by subtags?')
+        .addToggle(toggle => toggle
+            .setValue(currentTag.settingInheritable)
+            .onChange(async (value) => {
+                currentTag.settingInheritable = value;
+                await plugin.saveSettings();
+            })
+        )
+}
+
 function addAccompanyingTagRoots(containerEl, currentTag, app, plugin) {
     new Setting(containerEl)
         .setName('Accompanying Tag Roots')
-        .setDesc('Other root tags accompanying the root tag to apply these settings')
+        .setDesc('Other root tags accompanying the root tag to apply these settings. This will be presented as a separate base for the given tag root.')
         .addTextArea(textArea => {
             new AccompanyingTagSuggest(app, textArea);
             textArea.setPlaceholder('Search for accompanying root tags')
@@ -144,6 +157,7 @@ export class SettingTab extends PluginSettingTab {
                 .setDesc(`Settings for ${currentTagName}`)
 
             addRootTag(this.containerEl, currentTag, this.app, this.plugin);
+            addInheritToggle(this.containerEl, currentTag, this.plugin);
             addAccompanyingTagRoots(this.containerEl, currentTag, this.app, this.plugin);
             addView(this.containerEl, currentTag, this.plugin);
             addProperties(this.containerEl, currentTag, this.app, this.plugin);
