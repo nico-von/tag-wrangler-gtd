@@ -35,11 +35,15 @@ export function getInheritedSetting(tag, settings) {
         const current = parts.slice(0, i).join("/");
 
         const found = settings.find(s =>
-            s.tagname === current ||
-            matchesPattern(s.tagname, current)
+            s.tagname === current || matchesPattern(s.tagname, current)
         );
 
-        if (found) return found;
+        if (!found) continue;
+        if (found.tagname === tag) return found;
+
+        if (found.settingInheritable || matchesPattern(found.tagname, tag)) {
+            return found;
+        }
     }
 
     return null;
