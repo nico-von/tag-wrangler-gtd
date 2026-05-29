@@ -131,7 +131,7 @@ export function listTags(app, baseTag = null) {
 
 }
 
-function makeFilterObj(tag, tags, accompanyingObj = null) {
+function makeFilterObj(tag, tags, accompanyingObj = {}) {
     const filterArray = [];
 
     const primaryTags = tags.filter(e => e.includes(tag.tag));
@@ -145,20 +145,25 @@ function makeFilterObj(tag, tags, accompanyingObj = null) {
         );
     });
 
-    const acc = accompanyingObj?.accompanyingTagRoots;
+    const acc = accompanyingObj?.allAccompanyingTagRoots;
+    const lacc = accompanyingObj?.localAccompanyingTagRoots;
+    const isPrimary = accompanyingObj?.isPrimary;
 
-    if (acc && acc.size > 0) {
-        const isPrimary = accompanyingObj.isPrimary;
-
-
+    if (acc && isPrimary) {
         for (const tagItem of acc) {
             const t = new Tag(tagItem);
+            filterArray.push(`!file.hasTag("${t.name}")`);
+        }
+    } else if (acc && lacc && !isPrimary) {
+        for (const tagItem of lacc) {
+            const t = new Tag(tagItem);
+            filterArray.push(`file.hasTag("${t.name}")`);
+        }
 
-            filterArray.push(
-                isPrimary
-                    ? `!file.hasTag("${t.name}")`
-                    : `file.hasTag("${t.name}")`
-            );
+        for (const tagItem of acc) {
+            if (lacc.has(tagItem)) continue;
+            const t = new Tag(tagItem);
+            filterArray.push(`!file.hasTag("${t.name}")`);
         }
     }
 
@@ -168,7 +173,6 @@ function makeFilterObj(tag, tags, accompanyingObj = null) {
         }
     };
 }
-
 
 function buildTagObject(setting, tag, tags, accompanyingObj = null) {
     const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
@@ -216,7 +220,8 @@ function buildTagObject(setting, tag, tags, accompanyingObj = null) {
 
 function applySettings(e, tagsWithSecondary, subTags) {
     const { tag, setting, isPrimary } = e;
-    const tagWithSecondary = tagsWithSecondary.find(e => e.tagName === tag.tagName)
+    const tagWithSecondary = tagsWithSecondary.find(e => e.tag.name === tag.name)
+    console.log(tag.name, tagWithSecondary)
 
     if (isPrimary && !tagWithSecondary) {
         const tagObject = buildTagObject(setting, tag, subTags);
@@ -224,12 +229,20 @@ function applySettings(e, tagsWithSecondary, subTags) {
     }
 
     if (isPrimary && tagWithSecondary) {
-        const tagObject = buildTagObject(setting, tag, subTags, { accompanyingTagRoots: tagWithSecondary.accompanyingTagRoots, isPrimary });
+        const tagObject = buildTagObject(setting, tag, subTags, {
+            allAccompanyingTagRoots: tagWithSecondary.accompanyingTagRoots,
+            localAccompanyingTagRoots: null,
+            isPrimary
+        });
         return { tag, tagObject, isPrimary }
     }
 
     if (!isPrimary) {
-        const tagObject = buildTagObject(setting, tag, subTags, { accompanyingTagRoots: new Set(setting.accompanyingTagRoots), isPrimary });
+        const tagObject = buildTagObject(setting, tag, subTags, {
+            allAccompanyingTagRoots: tagWithSecondary.accompanyingTagRoots,
+            localAccompanyingTagRoots: new Set(setting.accompanyingTagRoots),
+            isPrimary
+        });
         return { tag, tagObject, isPrimary, accompanyingTagRoots: setting.accompanyingTagRoots }
     }
 }
@@ -270,7 +283,7 @@ async function changeTagBaseContent(subTags, file, app, settings) {
         }
 
         for (let s of secondarySettings) {
-            const found = tagsWithSecondary.find(e => e.tagName === tag.tagName)
+            const found = tagsWithSecondary.find(e => e.tag.name === tag.name)
 
             if (!found) {
                 tagsWithSecondary.push({ tag: tag, accompanyingTagRoots: new Set(s.accompanyingTagRoots) })
