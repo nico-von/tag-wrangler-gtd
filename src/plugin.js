@@ -149,7 +149,7 @@ function makeFilterObj(tag, arr) {
     };
 }
 
-function buildTagObject(setting, tag) {
+function buildTagObject(setting, tag, arr) {
     const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
     const applyDefaultView = (viewtype = 'table') => {
         deepMergeReplace(tagBaseObj, {
@@ -199,19 +199,25 @@ function buildTagObject(setting, tag) {
 
 async function changeTagBaseContent(subTags, file, app, settings) {
     const { tagBaseSettings } = settings;
-    const subTagSettingsApplied = subTags.map((e, i, arr) => {
+    const customSettings = [];
+
+    for (let e of subTags) {
         const tag = new Tag(e);
         const settings = getInheritedSetting(e, tagBaseSettings);
-        console.log(settings)
-        const setting = settings[0]
-        // now we have multiple settings.
+        // select primary setting
+        const primarySetting = settings.find(e => e.accompanyingTags.length === 0)
+        // select secondary settings
+        const secondarySettings = settings.filter(e => e.accompanyingTags.length > 0)
+        if (primarySetting) {
+            customSettings.push({ tag, setting: primarySetting, isPrimary: true })
+        }
 
-        // first. look for the first setting that does not have accompanying Tags (This will be a primary tagBaseObj)
-        // then. the settings(they can be multiple) that does have accompanying tags will be retrieved. (This will be new secondary tagBaseObjects)
-        // so another map layer?
-    })
+        for (let s of secondarySettings) {
+            customSettings.push({ tag, setting: s, isPrimary: false })
+        }
+    }
 
-    
+
 
     let highestLevel = 0;
 
