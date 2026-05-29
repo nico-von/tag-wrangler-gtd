@@ -4,8 +4,9 @@ import { renameTag, findTargets } from "./renaming";
 import { Tag } from "./Tag";
 import { around } from "monkey-around";
 import { Confirm, use } from "@ophidian/core";
-import { stringify } from "yaml";
+import { isPair, stringify } from "yaml";
 import { getInheritedSetting } from "./inheritance";
+import { filter } from "uneventful";
 
 const tagHoverMain = "tag-wrangler:tag-pane";
 const tagBaseRefObj = {
@@ -130,18 +131,37 @@ export function listTags(app, baseTag = null) {
 
 }
 
-function makeFilterObj(tag, arr) {
+function makeFilterObj(tag, tags, accompanyingObj = null) {
     const filterArray = [];
-    arr
-        .filter(e => e.includes(tag.tag))
-        .forEach((tagItem, j) => {
-            const t = new Tag(tagItem)
-            if (j === 0) {
-                filterArray.push(`file.hasTag("${t.name}")`)
-            } else {
-                filterArray.push(`!file.hasTag("${t.name}")`)
-            }
-        })
+
+    const primaryTags = tags.filter(e => e.includes(tag.tag));
+
+    primaryTags.forEach((tagItem, i) => {
+        const t = new Tag(tagItem);
+        filterArray.push(
+            i === 0
+                ? `file.hasTag("${t.name}")`
+                : `!file.hasTag("${t.name}")`
+        );
+    });
+
+    const acc = accompanyingObj?.accompanyingTagRoots;
+
+    if (acc && acc.size > 0) {
+        const isPrimary = accompanyingObj.isPrimary;
+
+
+        for (const tagItem of acc) {
+            const t = new Tag(tagItem);
+
+            filterArray.push(
+                isPrimary
+                    ? `!file.hasTag("${t.name}")`
+                    : `file.hasTag("${t.name}")`
+            );
+        }
+    }
+
     return {
         filters: {
             and: filterArray
@@ -149,7 +169,8 @@ function makeFilterObj(tag, arr) {
     };
 }
 
-function buildTagObject(setting, tag, arr) {
+
+function buildTagObject(setting, tag, tags, accompanyingObj = null) {
     const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
     const applyDefaultView = (viewtype = 'table') => {
         deepMergeReplace(tagBaseObj, {
@@ -159,7 +180,7 @@ function buildTagObject(setting, tag, arr) {
     };
 
     const applyFilter = () => {
-        deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
+        deepMergeReplace(tagBaseObj, makeFilterObj(tag, tags, accompanyingObj));
     };
 
     if (!setting) {
@@ -190,50 +211,82 @@ function buildTagObject(setting, tag, arr) {
 
     deepRemoveEmptyChildren(tagBaseObj);
 
-    const tagObject = {
-        tag,
-        tagBaseObj
-    };
-    return tagObject;
+    return tagBaseObj;
 }
 
+function applySettings(e, tagsWithSecondary, subTags) {
+    const { tag, setting, isPrimary } = e;
+    const tagWithSecondary = tagsWithSecondary.find(e => e.tagName === tag.tagName)
+
+    if (isPrimary && !tagWithSecondary) {
+        const tagObject = buildTagObject(setting, tag, subTags);
+        return { tag, tagObject, isPrimary }
+    }
+
+    if (isPrimary && tagWithSecondary) {
+        const tagObject = buildTagObject(setting, tag, subTags, { accompanyingTagRoots: tagWithSecondary.accompanyingTagRoots, isPrimary });
+        return { tag, tagObject, isPrimary }
+    }
+
+    if (!isPrimary) {
+        const tagObject = buildTagObject(setting, tag, subTags, { accompanyingTagRoots: new Set(setting.accompanyingTagRoots), isPrimary });
+        return { tag, tagObject, isPrimary, accompanyingTagRoots: setting.accompanyingTagRoots }
+    }
+}
+
+function writeStringsArray(e, i) {
+    let highestLevel = 0;
+    const tagName = !e.accompanyingTagRoots ? e.tag.name : e.tag.name + ' secondary';
+    const tagLevel = e.tag.level;
+
+    highestLevel = i === 0 ? tagLevel : highestLevel;
+
+    return [
+        `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
+        "\n",
+        "```base",
+        stringify(e.tagObject),
+        "```"
+    ].join("\n");
+}
 async function changeTagBaseContent(subTags, file, app, settings) {
     const { tagBaseSettings } = settings;
-    const customSettings = [];
+    const settingsToApply = [];
+    const tagsWithSecondary = [];
 
     for (let e of subTags) {
         const tag = new Tag(e);
-        const settings = getInheritedSetting(e, tagBaseSettings);
+        const customSettings = getInheritedSetting(e, tagBaseSettings);
         // select primary setting
-        const primarySetting = settings.find(e => e.accompanyingTags.length === 0)
+        if (!customSettings) settingsToApply.push({ tag, setting: null, isPrimary: true })
+        const primarySetting = customSettings.find(e => e.accompanyingTagRoots.length === 0)
         // select secondary settings
-        const secondarySettings = settings.filter(e => e.accompanyingTags.length > 0)
+        const secondarySettings = customSettings.filter(e => e.accompanyingTagRoots.length > 0)
+
         if (primarySetting) {
-            customSettings.push({ tag, setting: primarySetting, isPrimary: true })
+            settingsToApply.push({ tag, setting: primarySetting, isPrimary: true })
+        } else {
+            settingsToApply.push({ tag, setting: null, isPrimary: true })
         }
 
         for (let s of secondarySettings) {
-            customSettings.push({ tag, setting: s, isPrimary: false })
+            const found = tagsWithSecondary.find(e => e.tagName === tag.tagName)
+
+            if (!found) {
+                tagsWithSecondary.push({ tag: tag, accompanyingTagRoots: new Set(s.accompanyingTagRoots) })
+            } else {
+                for (const t of s.accompanyingTagRoots) {
+                    found.accompanyingTagRoots.add(t)
+                }
+            }
+
+            settingsToApply.push({ tag, setting: s, isPrimary: false })
         }
     }
 
+    const subTagSettingsApplied = settingsToApply.map(e => applySettings(e, tagsWithSecondary, subTags))
 
-
-    let highestLevel = 0;
-
-    const subTagBaseStringsArr = subTagSettingsApplied.map((e, i, arr) => {
-        const tagName = e.tag.name;
-        const tagLevel = e.tag.level;
-        highestLevel = i === 0 ? tagLevel : highestLevel;
-
-        return [
-            `${"#".repeat((tagLevel - highestLevel) + 1)} ${tagName}`,
-            "\n",
-            "```base",
-            stringify(e.tagBaseObj),
-            "```"
-        ].join("\n"); //allow this to be manipulated in settings perhaps
-    })
+    const subTagBaseStringsArr = subTagSettingsApplied.map(writeStringsArray)
 
     const tagBaseString = subTagBaseStringsArr.join("\n".repeat(3));
 
