@@ -149,57 +149,69 @@ function makeFilterObj(tag, arr) {
     };
 }
 
+function buildTagObject(setting, tag) {
+    const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
+    const applyDefaultView = (viewtype = 'table') => {
+        deepMergeReplace(tagBaseObj, {
+            type: viewtype,
+            name: viewtype,
+        });
+    };
+
+    const applyFilter = () => {
+        deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
+    };
+
+    if (!setting) {
+        applyDefaultView();
+        applyFilter();
+
+    } else {
+        const { baseObj, viewtype } = setting;
+        const hasBaseObj = baseObj && Object.keys(baseObj).length > 0;
+        if (!hasBaseObj) {
+            applyDefaultView(viewtype);
+            applyFilter();
+
+        } else {
+            const hasViews = !!baseObj.views;
+
+            if (!hasViews && !baseObj.type) {
+                applyDefaultView(viewtype);
+            }
+
+            if (!hasViews && !baseObj.filters) {
+                applyFilter();
+            }
+
+            deepMergeReplace(tagBaseObj, baseObj);
+        }
+    }
+
+    deepRemoveEmptyChildren(tagBaseObj);
+
+    const tagObject = {
+        tag,
+        tagBaseObj
+    };
+    return tagObject;
+}
+
 async function changeTagBaseContent(subTags, file, app, settings) {
     const { tagBaseSettings } = settings;
     const subTagSettingsApplied = subTags.map((e, i, arr) => {
         const tag = new Tag(e);
-        const setting = getInheritedSetting(e, tagBaseSettings);
-        const tagBaseObj = JSON.parse(JSON.stringify(tagBaseRefObj));
-        const applyDefaultView = (viewtype = 'table') => {
-            deepMergeReplace(tagBaseObj, {
-                type: viewtype,
-                name: viewtype,
-            });
-        };
+        const settings = getInheritedSetting(e, tagBaseSettings);
+        console.log(settings)
+        const setting = settings[0]
+        // now we have multiple settings.
 
-        const applyFilter = () => {
-            deepMergeReplace(tagBaseObj, makeFilterObj(tag, arr));
-        };
+        // first. look for the first setting that does not have accompanying Tags (This will be a primary tagBaseObj)
+        // then. the settings(they can be multiple) that does have accompanying tags will be retrieved. (This will be new secondary tagBaseObjects)
+        // so another map layer?
+    })
 
-        if (!setting) {
-            applyDefaultView();
-            applyFilter();
-
-        } else {
-            const { baseObj, viewtype } = setting;
-            const hasBaseObj = baseObj && Object.keys(baseObj).length > 0;
-            if (!hasBaseObj) {
-                applyDefaultView(viewtype);
-                applyFilter();
-
-            } else {
-                const hasViews = !!baseObj.views;
-
-                if (!hasViews && !baseObj.type) {
-                    applyDefaultView(viewtype);
-                }
-
-                if (!hasViews && !baseObj.filters) {
-                    applyFilter();
-                }
-
-                deepMergeReplace(tagBaseObj, baseObj);
-            }
-        }
-
-        deepRemoveEmptyChildren(tagBaseObj);
-
-        const tagObject = {
-            tag,
-            tagBaseObj
-        };
-        return tagObject;
-    });
+    
 
     let highestLevel = 0;
 
